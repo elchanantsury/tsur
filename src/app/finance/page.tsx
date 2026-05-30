@@ -1,0 +1,135 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabase';
+
+export default function FinancePage() {
+  const [reports, setReports] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [type, setType] = useState('expense');
+
+  const fetchAll = async () => {
+    const [{ data: rData }, { data: tData }] = await Promise.all([
+      supabase.from('reports').select('branch, total_price, date'),
+      supabase.from('transactions').select('*'),
+    ]);
+    if (rData) setReports(rData);
+    if (tData) setTransactions(tData);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchAll();
+    const channel = supabase
+      .channel('finance-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, fetchAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, fetchAll)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  const branchIncome = reports.reduce((sum, r) => sum + Number(r.total_price || 0), 0);
+  const manualIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
+  const totalExpense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
+  const totalIncome = branchIncome + manualIncome;
+  const balance = totalIncome - totalExpense;
+
+  const handleAdd = async () => {
+    if (!amount || !description) return;
+    await supabase.from('transactions').insert([{ amount: Number(amount), type, description }]);
+    setAmount(''); setDescription('');
+  };
+
+  const card = (bg: string, border: string) => ({
+    background: bg,
+    border: `1px solid ${border}`,
+    borderRadius: '16px',
+    padding: '24px',
+    boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+  });
+
+  return (
+    <div dir="rtl" style={{ maxWidth: '900px', margin: '0 auto', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+      <h1 style={{
+        fontSize: '28px',
+        fontWeight: '800',
+        marginBottom: '28px',
+        background: 'linear-gradient(120deg, #059669, #0d9488, #06b6d4)',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+      }}>ניהול פיננסי</h1>
+
+      {/* כרטיסי סיכום — שורה אחת */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '28px' }}>
+        <div style={card('#f0fdf9', '#a7f3d0')}>
+          <p style={{ fontSize: '12px', color: '#6aada0', fontWeight: '600', marginBottom: '8px' }}>↗ סך הכנסות</p>
+          <p style={{ fontSize: '32px', fontWeight: '800', color: '#0d2420' }}>₪{totalIncome.toLocaleString()}</p>
+          <p style={{ fontSize: '11px', color: '#94c9bf', marginTop: '4px' }}>מסניפים: ₪{branchIncome.toLocaleString()} | ידני: ₪{manualIncome.toLocaleString()}</p>
+        </div>
+        <div style={card('#fff1f2', '#fecdd3')}>
+          <p style={{ fontSize: '12px', color: '#f43f5e', fontWeight: '600', marginBottom: '8px' }}>↘ סך הוצאות</p>
+          <p style={{ fontSize: '32px', fontWeight: '800', color: '#0d2420' }}>₪{totalExpense.toLocaleString()}</p>
+        </div>
+        <div style={card(balance >= 0 ? '#eff6ff' : '#fff7ed', balance >= 0 ? '#bfdbfe' : '#fed7aa')}>
+          <p style={{ fontSize: '12px', color: balance >= 0 ? '#3b82f6' : '#f97316', fontWeight: '600', marginBottom: '8px' }}>$ מאזן</p>
+          <p style={{ fontSize: '32px', fontWeight: '800', color: '#0d2420' }}>₪{balance.toLocaleString()}</p>
+        </div>
+      </div>
+
+      {/* טבלת סניפים */}
+      <div style={card('#ffffff', '#d1fae5')}>
+        <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#0d2420', marginBottom: '16px' }}>הכנסות מסניפים שנסגרו</h2>
+        {loading ? (
+          <p style={{ color: '#94c9bf', fontSize: '14px' }}>טוען...</p>
+        ) : reports.length === 0 ? (
+          <p style={{ color: '#94c9bf', fontSize: '14px' }}>אין דוחות עדיין</p>
+        ) : (
+          reports.map((r, i) => (
+            <div key={i} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '12px 0', borderBottom: i < reports.length - 1 ? '1px solid #ecfdf5' : 'none'
+            }}>
+              <div>
+                <p style={{ fontWeight: '600', color: '#0d2420', fontSize: '14px' }}>{r.branch}</p>
+                <p style={{ fontSize: '12px', color: '#94c9bf' }}>{r.date}</p>
+              </div>
+              <p style={{ fontWeight: '700', color: '#059669', fontSize: '16px' }}>₪{Number(r.total_price || 0).toLocaleString()}</p>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* הוספת תנועה */}
+      <div style={{ ...card('#ffffff', '#d1fae5'), marginTop: '16px' }}>
+        <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#0d2420', marginBottom: '16px' }}>הוסף תנועה ידנית</h2>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <input
+            type="number" placeholder="סכום (₪)" value={amount}
+            onChange={e => setAmount(e.target.value)}
+            style={{ flex: 1, minWidth: '120px', padding: '12px', border: '1px solid #d1fae5', borderRadius: '10px', fontSize: '14px', fontFamily: 'inherit' }}
+          />
+          <input
+            type="text" placeholder="תיאור" value={description}
+            onChange={e => setDescription(e.target.value)}
+            style={{ flex: 2, minWidth: '150px', padding: '12px', border: '1px solid #d1fae5', borderRadius: '10px', fontSize: '14px', fontFamily: 'inherit' }}
+          />
+          <select value={type} onChange={e => setType(e.target.value)}
+            style={{ padding: '12px', border: '1px solid #d1fae5', borderRadius: '10px', fontSize: '14px', fontFamily: 'inherit', background: '#fff' }}>
+            <option value="income">הכנסה</option>
+            <option value="expense">הוצאה</option>
+          </select>
+          <button onClick={handleAdd} style={{
+            padding: '12px 24px',
+            background: 'linear-gradient(135deg, #10b981, #0d9488)',
+            color: '#fff', border: 'none', borderRadius: '10px',
+            fontSize: '14px', fontWeight: '700', cursor: 'pointer',
+            fontFamily: 'inherit',
+            boxShadow: '0 4px 12px rgba(16,185,129,0.3)',
+          }}>הוסף</button>
+        </div>
+      </div>
+    </div>
+  );
+}

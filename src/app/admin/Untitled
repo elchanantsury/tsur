@@ -1,0 +1,9 @@
+const updateRole = async (userId, newRole) => {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ role: newRole })
+    .eq('id', userId);
+    
+  if (error) alert("קרתה שגיאה");
+  else alert("התפקיד עודכן!");
+};

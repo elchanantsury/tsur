@@ -1,0 +1,76 @@
+'use client';
+import { useState } from 'react';
+import { BRANCHES_DATA } from '../../constants/branches';
+
+export default function WorkLogPage() {
+  const [selectedBranch, setSelectedBranch] = useState<any>(null);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isDone, setIsDone] = useState(false);
+
+  const getWhatsAppLink = (phone: string) => {
+    if (!phone || phone === '-') return '#';
+    const cleaned = phone.replace(/\D/g, '');
+    return `https://wa.me/${cleaned.startsWith('0') ? '972' + cleaned.substring(1) : cleaned}`;
+  };
+
+  const getWazeLink = (address: string) => `https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes`;
+
+  return (
+    <div dir="rtl" style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }}>
+      <header style={{ marginBottom: '30px', textAlign: 'center' }}>
+        <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#0f172a' }}>📅 יומן עבודה</h1>
+      </header>
+
+      {!selectedBranch ? (
+        <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>בחר סניף לעבודה:</label>
+          <select 
+            onChange={(e) => {
+              const branch = BRANCHES_DATA.find(b => b.id.toString() === e.target.value);
+              setSelectedBranch(branch || null);
+            }}
+            style={{ width: '100%', padding: '14px', borderRadius: '10px', marginBottom: '20px', border: '2px solid #e2e8f0' }}
+          >
+            <option value="">-- בחר סניף מהרשימה --</option>
+            {BRANCHES_DATA.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+          
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>תאריך:</label>
+          <input 
+            type="date" 
+            value={selectedDate} 
+            onChange={(e) => setSelectedDate(e.target.value)}
+            style={{ width: '100%', padding: '14px', borderRadius: '10px', border: '2px solid #e2e8f0' }}
+          />
+        </div>
+      ) : (
+        <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h2 style={{ margin: 0 }}>{selectedBranch.name}</h2>
+            <button onClick={() => { setSelectedBranch(null); setIsDone(false); }} style={{ padding: '8px 12px', cursor: 'pointer' }}>חזור לבחירה</button>
+          </div>
+          
+          <p><strong>תאריך:</strong> {selectedDate}</p>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '25px' }}>
+            <a href={getWhatsAppLink(selectedBranch.cell)} target="_blank" rel="noopener noreferrer" style={{ padding: '12px', borderRadius: '8px', color: '#fff', textDecoration: 'none', fontWeight: 'bold', fontSize: '13px', textAlign: 'center', backgroundColor: '#25D366' }}>💬 וואטסאפ</a>
+            <a href={`tel:${selectedBranch.cell}`} style={{ padding: '12px', borderRadius: '8px', color: '#fff', textDecoration: 'none', fontWeight: 'bold', fontSize: '13px', textAlign: 'center', backgroundColor: '#0ea5e9' }}>📞 חיוג</a>
+            <a href={getWazeLink(selectedBranch.address)} target="_blank" rel="noopener noreferrer" style={{ padding: '12px', borderRadius: '8px', color: '#fff', textDecoration: 'none', fontWeight: 'bold', fontSize: '13px', textAlign: 'center', backgroundColor: '#33CCFF' }}>🚙 Waze</a>
+          </div>
+
+          <div style={{ padding: '20px', backgroundColor: isDone ? '#dcfce7' : '#f8fafc', borderRadius: '12px', border: '2px solid', borderColor: isDone ? '#22c55e' : '#e2e8f0' }}>
+            <label style={{ display: 'flex', alignItems: 'center', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer' }}>
+              <input 
+                type="checkbox" 
+                checked={isDone} 
+                onChange={() => setIsDone(!isDone)} 
+                style={{ width: '24px', height: '24px', marginLeft: '12px' }} 
+              />
+              {isDone ? '✅ העבודה בוצעה!' : 'סמן סניף כבוצע'}
+            </label>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
