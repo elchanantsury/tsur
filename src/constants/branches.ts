@@ -1,4 +1,23 @@
 // src/constants/branches.ts
+
+export const REGION_ORDER = ['צפון', 'מרכז', 'ירושלים', 'דרום'] as const;
+
+export type BranchRegion = (typeof REGION_ORDER)[number];
+
+export const REGION_STYLES: Record<BranchRegion, { bg: string; border: string; color: string; icon: string }> = {
+  צפון: { bg: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8', icon: '🧭' },
+  מרכז: { bg: '#ecfdf5', border: '#a7f3d0', color: '#047857', icon: '🏙️' },
+  ירושלים: { bg: '#faf5ff', border: '#e9d5ff', color: '#7c3aed', icon: '🕌' },
+  דרום: { bg: '#fff7ed', border: '#fed7aa', color: '#c2410c', icon: '☀️' },
+};
+
+export function groupBranchesByRegion<T extends { region: string }>(branches: T[]) {
+  return REGION_ORDER.map(region => ({
+    region,
+    branches: branches.filter(b => b.region === region),
+  })).filter(g => g.branches.length > 0);
+}
+
 export const BRANCHES_DATA = [
   // --- מרכז ---
   { id: 1, region: "מרכז", name: "דיזינגוף סנטר", manager: "אור פרץ", phone: "077-9801701", cell: "052-2842088", address: "דיזינגוף 45, תל אביב", price: 1000 },

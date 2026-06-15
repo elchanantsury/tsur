@@ -1,9 +1,11 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { BRANCHES_DATA } from '../../constants/branches';
+import { useRouter } from 'next/navigation';
+import { BRANCHES_DATA, groupBranchesByRegion, REGION_STYLES, type BranchRegion } from '../../constants/branches';
 import { supabase } from '../../lib/supabase';
+import { createAppNotification } from '../../lib/notify';
 import SignatureCanvas from 'react-signature-canvas';
-import { Plus, X, CheckCircle, Calendar, ChevronDown } from 'lucide-react';
+import { Plus, X, Calendar } from 'lucide-react';
 
 const TASK_PRICES = { infinity: 650, windows: 200, height: 350 };
 
@@ -22,6 +24,7 @@ interface Report {
 }
 
 export default function WorkLogPage() {
+  const router = useRouter();
   const [tab, setTab] = useState<'plan' | 'close'>('plan');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [scheduled, setScheduled] = useState<ScheduledBranch[]>([]);
@@ -29,16 +32,36 @@ export default function WorkLogPage() {
   const [showAddBranch, setShowAddBranch] = useState(false);
   const [searchBranch, setSearchBranch] = useState('');
   const [currentRound, setCurrentRound] = useState(1);
-
-  // סגירת סניף
   const [closingBranch, setClosingBranch] = useState<ScheduledBranch | null>(null);
   const [checklist, setChecklist] = useState({ infinity: false, windows: false, height: false, other: false });
   const [otherText, setOtherText] = useState('');
   const [proofMode, setProofMode] = useState<'signature' | 'photo' | null>(null);
   const [signatureData, setSignatureData] = useState<string | null>(null);
+  const [stampText, setStampText] = useState('');
   const [photoData, setPhotoData] = useState<string | null>(null);
   const [showSig, setShowSig] = useState(false);
   const sigCanvas = useRef<any>(null);
+
+  const buildSignatureImage = (): string | null => {
+    if (!sigCanvas.current) return null;
+    const source = sigCanvas.current.getCanvas() as HTMLCanvasElement;
+    if (!stampText.trim()) return source.toDataURL();
+
+    const merged = document.createElement('canvas');
+    merged.width = source.width;
+    merged.height = source.height;
+    const ctx = merged.getContext('2d');
+    if (!ctx) return source.toDataURL();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, merged.width, merged.height);
+    ctx.drawImage(source, 0, 0);
+    ctx.fillStyle = '#047857';
+    ctx.font = 'bold 22px "Plus Jakarta Sans", sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(stampText.trim(), merged.width - 16, 36);
+    return merged.toDataURL();
+  };
 
   const fetchData = async () => {
     const { data: sData } = await supabase
@@ -48,17 +71,11 @@ export default function WorkLogPage() {
     if (sData) setScheduled(sData);
     if (rData) {
       setAllReports(rData);
-      // חישוב סבב נוכחי
       const closedAll = BRANCHES_DATA.every(b =>
         rData.some((r: Report) => r.branch === b.name)
       );
-      if (closedAll) {
-        const maxRound = Math.max(...rData.map((r: Report) => r.round || 1), 1);
-        setCurrentRound(maxRound + 1);
-      } else {
-        const maxRound = Math.max(...rData.map((r: Report) => r.round || 1), 1);
-        setCurrentRound(maxRound);
-      }
+      const maxRound = Math.max(...rData.map((r: Report) => r.round || 1), 1);
+      setCurrentRound(closedAll ? maxRound + 1 : maxRound);
     }
   };
 
@@ -66,7 +83,11 @@ export default function WorkLogPage() {
 
   const todayScheduled = scheduled.filter(s => s.date === selectedDate);
   const closedBranchNames = allReports.map(r => r.branch);
-
+  const branchesReadyToClose = todayScheduled.filter(
+    s => !s.closed && !closedBranchNames.includes(s.branch_name)
+  );
+  const formatDateHe = (iso: string) =>
+    new Date(iso + 'T12:00:00').toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' });
   const filteredBranches = BRANCHES_DATA.filter(b =>
     b.name.includes(searchBranch) &&
     !todayScheduled.find(s => s.branch_name === b.name)
@@ -95,6 +116,7 @@ export default function WorkLogPage() {
     setOtherText('');
     setProofMode(null);
     setSignatureData(null);
+    setStampText('');
     setPhotoData(null);
     setShowSig(false);
   };
@@ -114,7 +136,6 @@ export default function WorkLogPage() {
 
   const handleFinalClose = async () => {
     if (!closingBranch) return;
-    const branch = BRANCHES_DATA.find(b => b.name === closingBranch.branch_name);
     await supabase.from('reports').insert([{
       branch: closingBranch.branch_name,
       date: new Date().toLocaleDateString('he-IL'),
@@ -128,8 +149,20 @@ export default function WorkLogPage() {
     await supabase.from('scheduled_branches')
       .update({ closed: true })
       .eq('id', closingBranch.id);
+
+    await createAppNotification({
+      type: 'branch_closed',
+      title: `סניף נסגר: ${closingBranch.branch_name}`,
+      message: `סכום: ₪${calculateTotal().toLocaleString()} · סבב ${currentRound}`,
+      link: '/reports',
+      branch_name: closingBranch.branch_name,
+      target_role: 'both',
+      sendSms: true,
+    });
+
     setClosingBranch(null);
     fetchData();
+    router.push('/april-branches');
   };
 
   const card: React.CSSProperties = {
@@ -147,8 +180,6 @@ export default function WorkLogPage() {
 
   return (
     <div dir="rtl" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", maxWidth: '800px', margin: '0 auto' }}>
-
-      {/* Header */}
       <div style={{ marginBottom: '24px' }}>
         <h1 style={{
           fontSize: '28px', fontWeight: '800', margin: 0,
@@ -160,7 +191,6 @@ export default function WorkLogPage() {
         </p>
       </div>
 
-      {/* Tabs */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
         {(['plan', 'close'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)} style={{
@@ -176,10 +206,8 @@ export default function WorkLogPage() {
         ))}
       </div>
 
-      {/* תכנון יום */}
       {tab === 'plan' && (
         <div>
-          {/* בחירת תאריך */}
           <div style={{ ...card, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
             <Calendar size={20} color="#10b981" />
             <input
@@ -201,7 +229,6 @@ export default function WorkLogPage() {
             </button>
           </div>
 
-          {/* חיפוש סניף */}
           {showAddBranch && (
             <div style={{ ...card, marginBottom: '20px' }}>
               <input
@@ -226,7 +253,6 @@ export default function WorkLogPage() {
             </div>
           )}
 
-          {/* רשימת סניפים לתאריך */}
           {todayScheduled.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '48px', color: '#94c9bf' }}>
               <p style={{ fontSize: '36px' }}>📅</p>
@@ -245,7 +271,8 @@ export default function WorkLogPage() {
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <div style={{
-                        width: '32px', height: '32px', borderRadius: '50%', background: isClosed ? '#10b981' : '#f0fdf9',
+                        width: '32px', height: '32px', borderRadius: '50%',
+                        background: isClosed ? '#10b981' : '#f0fdf9',
                         border: `2px solid ${isClosed ? '#10b981' : '#d1fae5'}`,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         color: isClosed ? '#fff' : '#94c9bf', fontWeight: '700', fontSize: '13px',
@@ -272,40 +299,78 @@ export default function WorkLogPage() {
         </div>
       )}
 
-      {/* סגירת סניף */}
       {tab === 'close' && !closingBranch && (
         <div>
-          <p style={{ color: '#6aada0', fontSize: '14px', marginBottom: '16px' }}>בחר סניף לסגירה:</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {BRANCHES_DATA.filter(b => !closedBranchNames.includes(b.name)).map(b => {
-              const isScheduledToday = todayScheduled.find(s => s.branch_name === b.name);
-              return (
-                <button
-                  key={b.id}
-                  onClick={() => startClose({ id: '', branch_name: b.name, date: selectedDate, round: currentRound, closed: false })}
-                  style={{
-                    width: '100%', ...card, cursor: 'pointer', border: isScheduledToday ? '2px solid #10b981' : '1px solid #d1fae5',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    textAlign: 'right', transition: 'all 0.18s',
-                  }}
-                >
-                  <div>
-                    <p style={{ fontWeight: '700', color: '#0d2420', margin: 0 }}>{b.name}</p>
-                    <p style={{ fontSize: '12px', color: '#6aada0', margin: '2px 0 0' }}>{b.region}</p>
-                  </div>
-                  {isScheduledToday && (
-                    <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '700', background: '#ecfdf5', padding: '4px 10px', borderRadius: '8px' }}>
-                      מתוכנן היום
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+          <div style={{ ...card, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <Calendar size={20} color="#10b981" />
+            <input
+              type="date" value={selectedDate}
+              onChange={e => setSelectedDate(e.target.value)}
+              style={{ ...inputStyle, width: 'auto', flex: 1 }}
+            />
           </div>
+
+          <p style={{ color: '#6aada0', fontSize: '14px', marginBottom: '16px' }}>
+            סניפים לסגירה ליום {formatDateHe(selectedDate)} — רק מה שתוכנן ב״תכנון יום״
+          </p>
+
+          {branchesReadyToClose.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '48px', color: '#94c9bf', ...card }}>
+              <p style={{ fontSize: '36px', margin: '0 0 8px' }}>📋</p>
+              <p style={{ margin: 0 }}>אין סניפים פתוחים לסגירה בתאריך זה</p>
+              <p style={{ fontSize: '13px', marginTop: '8px' }}>
+                עבור ל״תכנון יום״, בחר תאריך והוסף סניפים
+              </p>
+            </div>
+          ) : (
+            groupBranchesByRegion(
+              branchesReadyToClose.map(s => {
+                const info = BRANCHES_DATA.find(b => b.name === s.branch_name);
+                return { ...s, region: info?.region ?? 'מרכז' };
+              })
+            ).map(({ region, branches }) => {
+              const style = REGION_STYLES[region as BranchRegion];
+              return (
+                <div key={region} style={{ marginBottom: '20px' }}>
+                  <p style={{
+                    fontWeight: '700', fontSize: '13px', color: style.color,
+                    marginBottom: '8px', padding: '8px 12px', borderRadius: '10px',
+                    background: style.bg, border: `1px solid ${style.border}`,
+                  }}>
+                    {style.icon} {region} ({branches.length})
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {branches.map(s => (
+                      <button
+                        key={s.id}
+                        onClick={() => startClose(s as ScheduledBranch)}
+                        style={{
+                          width: '100%', ...card, cursor: 'pointer',
+                          border: `2px solid ${style.border}`,
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          textAlign: 'right', transition: 'all 0.18s',
+                        }}
+                      >
+                        <div>
+                          <p style={{ fontWeight: '700', color: '#0d2420', margin: 0 }}>{s.branch_name}</p>
+                          <p style={{ fontSize: '12px', color: '#6aada0', margin: '2px 0 0' }}>סבב {s.round}</p>
+                        </div>
+                        <span style={{
+                          fontSize: '11px', color: '#10b981', fontWeight: '700',
+                          background: '#ecfdf5', padding: '4px 10px', borderRadius: '8px',
+                        }}>
+                          סגור ←
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       )}
 
-      {/* מסך סגירה */}
       {tab === 'close' && closingBranch && (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
@@ -317,7 +382,6 @@ export default function WorkLogPage() {
             </h2>
           </div>
 
-          {/* צ'קליסט */}
           <div style={{ ...card, marginBottom: '16px' }}>
             <p style={{ fontWeight: '700', color: '#0d2420', marginBottom: '14px' }}>מה בוצע? (בחר לפחות אחד)</p>
             {[
@@ -327,8 +391,7 @@ export default function WorkLogPage() {
             ].map(item => (
               <label key={item.key} style={{
                 display: 'flex', alignItems: 'center', gap: '12px',
-                padding: '12px', borderRadius: '10px', cursor: 'pointer',
-                marginBottom: '8px',
+                padding: '12px', borderRadius: '10px', cursor: 'pointer', marginBottom: '8px',
                 background: checklist[item.key as keyof typeof checklist] ? '#ecfdf5' : '#f8fffe',
                 border: `1px solid ${checklist[item.key as keyof typeof checklist] ? '#6ee7b7' : '#d1fae5'}`,
                 transition: 'all 0.15s',
@@ -365,7 +428,6 @@ export default function WorkLogPage() {
             )}
           </div>
 
-          {/* הוכחה */}
           <div style={{ ...card, marginBottom: '16px' }}>
             <p style={{ fontWeight: '700', color: '#0d2420', marginBottom: '14px' }}>הוכחת סיום (חתימה או תמונה)</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
@@ -378,7 +440,7 @@ export default function WorkLogPage() {
                   color: signatureData ? '#10b981' : '#6aada0',
                 }}
               >
-                {signatureData ? '✅ נחתם' : '✍️ חתימת מנהלת'}
+                {signatureData ? '✅ נחתם' : '🔏 חותמת מנהלת'}
               </button>
               <label style={{
                 padding: '14px', borderRadius: '12px', border: `2px solid ${photoData ? '#10b981' : '#d1fae5'}`,
@@ -400,17 +462,62 @@ export default function WorkLogPage() {
             </div>
 
             {showSig && (
-              <div style={{ border: '1px solid #d1fae5', borderRadius: '12px', overflow: 'hidden' }}>
-                <div style={{ background: '#f0fdf9', padding: '8px 12px', fontSize: '13px', color: '#6aada0', fontWeight: '600' }}>
-                  חתימת מנהלת — {BRANCHES_DATA.find(b => b.name === closingBranch.branch_name)?.manager}
+              <div style={{ border: '1px solid #d1fae5', borderRadius: '14px', overflow: 'hidden', background: '#fff' }}>
+                <div style={{ background: '#f0fdf9', padding: '12px 14px', borderBottom: '1px solid #d1fae5' }}>
+                  <p style={{ margin: '0 0 8px', fontSize: '13px', color: '#6aada0', fontWeight: '600' }}>
+                    הזן חותמת וחתום באזור הימני
+                  </p>
+                  <input
+                    type="text"
+                    value={stampText}
+                    onChange={e => setStampText(e.target.value)}
+                    placeholder="טקסט חותמת (למשל: אושר ✓)"
+                    style={{ ...inputStyle, background: '#fff' }}
+                  />
                 </div>
-                <SignatureCanvas
-                  ref={sigCanvas}
-                  canvasProps={{ width: 500, height: 160, style: { width: '100%', background: '#fff' } }}
-                />
-                <div style={{ display: 'flex', gap: '8px', padding: '8px' }}>
+                <div style={{ position: 'relative', padding: '12px 12px 8px', direction: 'rtl' }}>
+                  <p style={{
+                    margin: '0 0 6px', fontSize: '11px', color: '#94c9bf', fontWeight: '600',
+                    textAlign: 'right', paddingRight: '4px',
+                  }}>
+                    ← התחילו לחתום מכאן
+                  </p>
+                  <div style={{
+                    border: '1px solid #d1fae5', borderRadius: '12px',
+                    overflow: 'hidden', background: '#fff',
+                    display: 'flex', justifyContent: 'flex-start',
+                  }}>
+                    <div style={{ width: '94%', position: 'relative' }}>
+                      <div style={{
+                        position: 'absolute', bottom: '28px', right: '12px', left: '12px',
+                        borderBottom: '1px dashed #a7f3d0', pointerEvents: 'none', zIndex: 1,
+                      }} />
+                      <SignatureCanvas
+                        ref={sigCanvas}
+                        canvasProps={{
+                          width: 640,
+                          height: 220,
+                          style: {
+                            width: '100%',
+                            height: '220px',
+                            background: '#fff',
+                            display: 'block',
+                            touchAction: 'none',
+                          },
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', padding: '8px 12px 12px' }}>
                   <button
-                    onClick={() => { setSignatureData(sigCanvas.current.toDataURL()); setShowSig(false); }}
+                    onClick={() => {
+                      const image = buildSignatureImage();
+                      if (image) {
+                        setSignatureData(image);
+                        setShowSig(false);
+                      }
+                    }}
                     style={{
                       flex: 1, padding: '10px', background: 'linear-gradient(135deg, #10b981, #0d9488)',
                       color: '#fff', border: 'none', borderRadius: '8px',
@@ -437,7 +544,6 @@ export default function WorkLogPage() {
             )}
           </div>
 
-          {/* כפתור סיום */}
           <button
             disabled={!canSubmit}
             onClick={handleFinalClose}

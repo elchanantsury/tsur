@@ -12,6 +12,7 @@ interface Client {
   price: number;
   frequency: string;
   notes: string;
+  visit_date?: string | null;
 }
 
 export default function PrivateClientsPage() {
@@ -21,7 +22,8 @@ export default function PrivateClientsPage() {
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState<Client | null>(null);
   const [form, setForm] = useState({
-    name: '', phone: '', address: '', price: '', frequency: 'שבועי', notes: ''
+    name: '', phone: '', address: '', price: '', frequency: 'שבועי', notes: '',
+    visit_date: new Date().toISOString().split('T')[0],
   });
 
   const fetchClients = async () => {
@@ -49,8 +51,12 @@ export default function PrivateClientsPage() {
     await supabase.from('private_clients').insert([{
       name: form.name, phone: form.phone, address: form.address,
       price: Number(form.price), frequency: form.frequency, notes: form.notes,
+      visit_date: form.visit_date || null,
     }]);
-    setForm({ name: '', phone: '', address: '', price: '', frequency: 'שבועי', notes: '' });
+    setForm({
+      name: '', phone: '', address: '', price: '', frequency: 'שבועי', notes: '',
+      visit_date: new Date().toISOString().split('T')[0],
+    });
     setShowForm(false);
     fetchClients();
   };
@@ -144,6 +150,13 @@ export default function PrivateClientsPage() {
             </select>
             <input style={inputStyle} placeholder="הערות" value={form.notes}
               onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '12px', color: '#6aada0', fontWeight: '600' }}>תאריך ביקור</span>
+              <input
+                type="date" style={inputStyle} value={form.visit_date}
+                onChange={e => setForm(p => ({ ...p, visit_date: e.target.value }))}
+              />
+            </label>
           </div>
           <button
             onClick={handleAdd}
@@ -188,7 +201,10 @@ export default function PrivateClientsPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <p style={{ fontWeight: '800', fontSize: '16px', color: '#0d2420', margin: 0 }}>{c.name}</p>
-                  <p style={{ fontSize: '12px', color: '#6aada0', margin: '4px 0 0' }}>{c.frequency}</p>
+                  <p style={{ fontSize: '12px', color: '#6aada0', margin: '4px 0 0' }}>
+                    {c.frequency}
+                    {c.visit_date && ` · ${new Date(c.visit_date + 'T12:00:00').toLocaleDateString('he-IL')}`}
+                  </p>
                 </div>
                 <p style={{ fontWeight: '800', fontSize: '18px', color: '#10b981', margin: 0 }}>
                   ₪{c.price?.toLocaleString()}

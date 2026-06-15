@@ -1,7 +1,9 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
+import AuthLayout, { authButtonStyle, authInputStyle, authLinkStyle } from '../../components/AuthLayout';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -14,7 +16,7 @@ export default function LoginPage() {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      alert("שגיאה בהתחברות: " + error.message);
+      alert('שגיאה בהתחברות: ' + error.message);
       setLoading(false);
       return;
     }
@@ -27,33 +29,46 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '50px auto', padding: '30px', border: '1px solid #e2e8f0', borderRadius: '16px', background: '#fff' }}>
-      <h2 style={{ textAlign: 'center' }}>התחברות ל-Tzur Clean</h2>
-
+    <AuthLayout
+      title="ברוכים השבים"
+      subtitle="התחברות למערכת Tzur Clean"
+      footer={
+        <>
+          אין לך חשבון עדיין?{' '}
+          <Link href="/signup" style={authLinkStyle}>הירשם כאן</Link>
+        </>
+      }
+    >
       <input
         type="email"
         placeholder="אימייל"
+        value={email}
         onChange={(e) => setEmail(e.target.value)}
-        style={{ width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+        style={authInputStyle}
       />
       <input
         type="password"
         placeholder="סיסמה"
+        value={password}
         onChange={(e) => setPassword(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-        style={{ width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+        style={authInputStyle}
       />
 
+      <p style={{ textAlign: 'left', margin: '0 0 12px' }}>
+        <Link href="/forgot-password" style={{ ...authLinkStyle, fontSize: '13px' }}>
+          שכחת סיסמה?
+        </Link>
+      </p>
+
       <button
+        type="button"
         onClick={handleLogin}
         disabled={loading}
-        style={{ width: '100%', padding: '12px', background: loading ? '#94a3b8' : '#0f172a', color: '#fff', borderRadius: '8px', border: 'none', cursor: loading ? 'not-allowed' : 'pointer' }}
+        style={authButtonStyle(loading)}
       >
         {loading ? 'מתחבר...' : 'התחבר'}
-        <p style={{ textAlign: 'center', marginTop: '20px' }}>
-  אין לך חשבון עדיין? <a href="/signup" style={{ color: '#0070f3', textDecoration: 'underline' }}>הירשם כאן</a>
-</p>
       </button>
-    </div>
+    </AuthLayout>
   );
 }

@@ -40,12 +40,15 @@ export async function middleware(request: NextRequest) {
     console.log("User ID:", session.user.id);
   }
   // הגנה על דפים: אם אין סשן ואתה מנסה לגשת לדף שאינו התחברות/הרשמה - חזור ללוגין
-  if (!session && !request.nextUrl.pathname.startsWith('/login') && !request.nextUrl.pathname.startsWith('/signup')) {
+  const publicAuthPaths = ['/login', '/signup', '/forgot-password', '/reset-password'];
+  const isPublicAuth = publicAuthPaths.some(p => request.nextUrl.pathname.startsWith(p));
+
+  if (!session && !isPublicAuth) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // מניעה ממי שמחובר לגשת לדפי התחברות
-  if (session && (request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/signup'))) {
+  // מניעה ממי שמחובר לגשת לדפי התחברות (לא כולל reset-password — אחרי קישור מהמייל)
+  if (session && (request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/signup') || request.nextUrl.pathname.startsWith('/forgot-password'))) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
