@@ -1,6 +1,6 @@
 'use client';
 import { usePathname } from 'next/navigation';
-import AppShell from '../components/AppShell';
+import Sidebar from '../components/Sidebar';
 import './globals.css';
 import { ReportsProvider } from '../context/ReportsContext';
 
@@ -19,18 +19,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body style={{
-        margin: 0,
-        padding: 0,
+        margin: 0, padding: 0,
         fontFamily: "'Plus Jakarta Sans', sans-serif",
-        background: '#f8fffe',
-        color: '#0d2420',
-        minHeight: '100vh',
+        background: '#f8fffe', color: '#0d2420', minHeight: '100vh',
       }}>
         <ReportsProvider>
           {isAuthPage ? (
             <main style={{ background: '#f8fffe', minHeight: '100vh' }}>{children}</main>
           ) : (
-            <AppShell>{children}</AppShell>
+            <div style={{ display: 'flex', background: '#f8fffe', minHeight: '100vh' }}>
+              <Sidebar />
+              <main style={{
+                marginRight: '240px', flex: 1,
+                padding: '36px 40px', boxSizing: 'border-box',
+                minHeight: '100vh', textAlign: 'right', background: '#f8fffe',
+              }}>
+                {children}
+              </main>
+            </div>
           )}
         </ReportsProvider>
       </body>
