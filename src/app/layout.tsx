@@ -1,6 +1,6 @@
 'use client';
 import { usePathname } from 'next/navigation';
-import Sidebar from '../components/Sidebar';
+import AppShell from '../components/AppShell';
 import './globals.css';
 import { ReportsProvider } from '../context/ReportsContext';
 
@@ -27,16 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {isAuthPage ? (
             <main style={{ background: '#f8fffe', minHeight: '100vh' }}>{children}</main>
           ) : (
-            <div style={{ display: 'flex', background: '#f8fffe', minHeight: '100vh' }}>
-              <Sidebar />
-              <main style={{
-                marginRight: '240px', flex: 1,
-                padding: '36px 40px', boxSizing: 'border-box',
-                minHeight: '100vh', textAlign: 'right', background: '#f8fffe',
-              }}>
-                {children}
-              </main>
-            </div>
+            <AppShell>{children}</AppShell>
           )}
         </ReportsProvider>
       </body>

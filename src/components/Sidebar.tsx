@@ -11,7 +11,7 @@ type SidebarProps = {
   onNavigate?: () => void;
 };
 
-export default function Sidebar({ onNavigate }: SidebarProps = {}) {
+export default function Sidebar({ isOpen = true, isMobile = false, onClose, onNavigate }: SidebarProps = {}) {
   const { user } = useReports();
   const pathname = usePathname();
   const router = useRouter();
@@ -33,15 +33,12 @@ export default function Sidebar({ onNavigate }: SidebarProps = {}) {
   });
 
   return (
-    <div style={{
-      width: '240px', height: '100vh',
-      background: 'linear-gradient(180deg, #ffffff 0%, #f0fdf9 100%)',
-      position: 'fixed', right: 0, top: 0, zIndex: 100,
-      padding: '20px 16px', boxSizing: 'border-box',
-      borderLeft: '1px solid #d1fae5', display: 'flex',
-      flexDirection: 'column', boxShadow: '-4px 0 24px rgba(16,185,129,0.06)',
-      overflowY: 'auto',
-    }} dir="rtl">
+    <aside className={`app-sidebar ${isOpen ? 'app-sidebar--open' : 'app-sidebar--closed'}`} dir="rtl">
+      {isMobile && onClose && (
+        <button className="sidebar-close-btn" onClick={onClose} aria-label="סגור תפריט" type="button">
+          ✕
+        </button>
+      )}
       <div style={{ marginBottom: '24px', padding: '4px' }}>
         <img src="/logo.jpg" alt="TSUR Clean" style={{
           width: '100%', borderRadius: '14px',
@@ -82,6 +79,6 @@ export default function Sidebar({ onNavigate }: SidebarProps = {}) {
           cursor: 'pointer', fontFamily: 'inherit',
         }}>התנתק</button>
       </div>
-    </div>
+    </aside>
   );
 }
