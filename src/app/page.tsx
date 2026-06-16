@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BRANCHES_DATA } from '../constants/branches';
 import { useReports } from '../context/ReportsContext';
+import { isAdmin } from '../lib/roles';
 import { Building2, CheckCircle2, CircleDot, Users, Clock, Plus, X, ChevronLeft } from 'lucide-react';
 
 type Zmanim = Record<string, string>;
@@ -20,7 +21,8 @@ const ZMANIM_ROWS: { key: string; label: string }[] = [
 ];
 
 export default function Dashboard() {
-  const { reports } = useReports();
+  const { reports, user } = useReports();
+  const admin = isAdmin(user?.role);
   const [briefs, setBriefs] = useState<{ id: string; text: string; done: boolean }[]>([]);
   const [newBrief, setNewBrief] = useState('');
   const [showBriefInput, setShowBriefInput] = useState(false);
@@ -76,32 +78,34 @@ export default function Dashboard() {
   const deleteBrief = (id: string) =>
     saveBriefs(briefs.filter(b => b.id !== id));
 
-  const stats = [
+  const allStats = [
     {
-      label: 'סניפים במערכת', value: totalBranches, sub: 'סניפי אפריל',
+      label: 'סניפים במערכת', value: totalBranches, sub: 'סניפי אפריל', adminOnly: false,
       icon: <Building2 size={20} />, bg: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8', href: '/april-branches',
     },
     {
-      label: 'נסגרו', value: closedCount, sub: 'בסבב הנוכחי',
+      label: 'נסגרו', value: closedCount, sub: 'בסבב הנוכחי', adminOnly: false,
       icon: <CheckCircle2 size={20} />, bg: '#ecfdf5', border: '#6ee7b7', color: '#047857', href: '/reports',
     },
     {
-      label: 'נשארו', value: remainingCount, sub: 'ממתינים',
+      label: 'נשארו', value: remainingCount, sub: 'ממתינים', adminOnly: false,
       icon: <CircleDot size={20} />, bg: '#f0fdf9', border: '#5eead4', color: '#0f766e', href: '/april-branches',
     },
     {
-      label: 'ניהול פיננסים', value: '', sub: 'הכנסות והוצאות',
+      label: 'ניהול פיננסים', value: '', sub: 'הכנסות והוצאות', adminOnly: true,
       icon: <Building2 size={20} />, bg: '#fefce8', border: '#fde68a', color: '#b45309', href: '/finance',
     },
     {
-      label: 'לקוחות פרטיים', value: '', sub: 'ניהול לקוחות',
+      label: 'לקוחות פרטיים', value: '', sub: 'ניהול לקוחות', adminOnly: true,
       icon: <Users size={20} />, bg: '#fdf4ff', border: '#e9d5ff', color: '#7c3aed', href: '/private-clients',
     },
     {
-      label: 'יומן עבודה', value: '', sub: 'תכנון וסגירה',
+      label: 'יומן עבודה', value: '', sub: 'תכנון וסגירה', adminOnly: false,
       icon: <ChevronLeft size={20} />, bg: '#fff7ed', border: '#fed7aa', color: '#c2410c', href: '/work-log',
     },
   ];
+
+  const stats = allStats.filter(s => !s.adminOnly || admin);
 
   return (
     <div dir="rtl" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", maxWidth: '1000px', margin: '0 auto' }}>
@@ -198,7 +202,8 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* בריף היום */}
+      {/* בריף היום — למנהל בלבד */}
+      {admin && (
       <div style={{
         background: '#fff', border: '1px solid #d1fae5', borderRadius: '18px',
         padding: '20px', marginBottom: '20px',
@@ -282,6 +287,7 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+      )}
 
       {/* מצב מערכת */}
       <div style={{

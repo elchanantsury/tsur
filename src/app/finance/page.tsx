@@ -1,8 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useReports } from '../../context/ReportsContext';
 
 export default function FinancePage() {
+  const { user } = useReports();
   const [reports, setReports] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [amount, setAmount] = useState('');
@@ -55,6 +57,16 @@ export default function FinancePage() {
     boxSizing: 'border-box',
     minWidth: 0,
   });
+
+  if (user && user.role !== 'admin') {
+    return (
+      <div dir="rtl" style={{ textAlign: 'center', marginTop: '80px', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        <p style={{ fontSize: '48px' }}>🔒</p>
+        <h2 style={{ color: '#0d2420', fontSize: '22px', fontWeight: '700' }}>גישה מוגבלת</h2>
+        <p style={{ color: '#6aada0' }}>עמוד זה זמין למנהל בלבד</p>
+      </div>
+    );
+  }
 
   return (
     <div dir="rtl" className="page-wrap" style={{ maxWidth: '900px', margin: '0 auto', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
