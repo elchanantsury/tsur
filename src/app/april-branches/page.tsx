@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { groupBranchesByRegion, REGION_ORDER, REGION_STYLES, type BranchRegion } from '../../constants/branches';
-import { fetchBranchOverrides, mergeBranches, type BranchRecord } from '../../lib/branchData';
+import { fetchBranchOverrides, fetchHiddenBranches, mergeBranches, type BranchRecord } from '../../lib/branchData';
 import { useReports } from '../../context/ReportsContext';
 import { Phone, MessageCircle, Navigation, Trash2, X, TrendingUp, Pencil, Save } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -80,8 +80,12 @@ export default function AprilBranchesPage() {
   const [regionFilter, setRegionFilter] = useState<RegionFilter>('all');
 
   const loadBranches = async () => {
-    const overrides = await fetchBranchOverrides();
-    setAllBranches(mergeBranches(overrides));
+    const [overrides, hidden] = await Promise.all([
+      fetchBranchOverrides(),
+      fetchHiddenBranches(),
+    ]);
+    const merged = mergeBranches(overrides).filter(b => !hidden.includes(b.name));
+    setAllBranches(merged);
   };
 
   const fetchReports = async () => {
@@ -124,7 +128,13 @@ export default function AprilBranchesPage() {
   };
 
   const handleDeleteBranch = async (branchName: string) => {
+    const { error } = await supabase.from('hidden_branches').upsert({ branch_name: branchName });
+    if (error) {
+      alert('שגיאה במחיקת הסניף: ' + error.message + '\n\nיש להריץ את supabase/hidden_branches.sql ב-Supabase');
+      return;
+    }
     await supabase.from('reports').delete().eq('branch', branchName);
+    await loadBranches();
     await fetchReports();
     setSelectedBranch(null);
     setConfirmDelete(false);
@@ -367,11 +377,11 @@ export default function AprilBranchesPage() {
                         background: 'rgba(255, 241, 242, 0.9)', color: '#f43f5e', cursor: 'pointer',
                         fontSize: '14px', fontWeight: '600', fontFamily: 'inherit',
                       }}>
-                        <Trash2 size={17} /> בטל סגירה (מחק דוח)
+                        <Trash2 size={17} /> מחק סניף
                       </button>
                     ) : (
                       <button type="button" onClick={() => handleDeleteBranch(selectedBranch.name)} style={{ ...btnStyle('#f43f5e', '#e11d48', '0 4px 14px rgba(244,63,94,0.3)'), gridColumn: '1 / -1' }}>
-                        <Trash2 size={17} /> אשר מחיקת דוח
+                        <Trash2 size={17} /> אשר מחיקת סניף לצמיתות
                       </button>
                     )
                   )}

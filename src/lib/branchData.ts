@@ -29,6 +29,11 @@ export async function fetchBranchOverrides(): Promise<Record<string, BranchOverr
   return map;
 }
 
+export async function fetchHiddenBranches(): Promise<string[]> {
+  const { data } = await supabase.from('hidden_branches').select('branch_name');
+  return (data || []).map(row => row.branch_name);
+}
+
 export function mergeBranches(overrides: Record<string, BranchOverride>): BranchRecord[] {
   return BRANCHES_DATA.map(b => {
     const o = overrides[b.name];
