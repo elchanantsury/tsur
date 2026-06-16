@@ -64,9 +64,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
       </button>
 
-      <main
-        className={`app-main ${sidebarOpen && !isMobile ? 'app-main--with-sidebar' : ''}`}
-      >
+      <main className="app-main">
         {children}
       </main>
     </div>

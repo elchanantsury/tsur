@@ -120,11 +120,6 @@ html, body {
   box-sizing: border-box;
   text-align: right;
   background: #f8fffe;
-  transition: margin-right 0.28s ease;
-}
-
-.app-main--with-sidebar {
-  margin-right: 240px;
 }
 
 @media (max-width: 768px) {
@@ -176,16 +171,4 @@ html, body {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
-}
-
-@media (min-width: 769px) {
-  .app-sidebar--open ~ .sidebar-toggle,
-  .app-shell:has(.app-sidebar--open) .sidebar-toggle {
-    right: 254px;
-    transition: right 0.28s ease;
-  }
-
-  .app-shell:has(.app-sidebar--closed) .sidebar-toggle {
-    right: 14px;
-  }
 }
