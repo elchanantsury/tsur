@@ -41,6 +41,8 @@ const BTN_BASE: React.CSSProperties = {
   border: 'none',
 };
 
+const VAT_RATE = 0.18;
+
 const editInputStyle: React.CSSProperties = {
   width: '100%',
   padding: '10px 12px',
@@ -381,11 +383,15 @@ export default function ReceiptScannerPage() {
                       type="number"
                       placeholder="0"
                       value={result.total_price}
-                      onChange={e => setResult(r => r ? { ...r, total_price: e.target.value } : r)}
+                      onChange={e => {
+                        const total = e.target.value;
+                        const vat = total ? (Number(total) * VAT_RATE / (1 + VAT_RATE)).toFixed(2) : '';
+                        setResult(r => r ? { ...r, total_price: total, vat } : r);
+                      }}
                     />
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <span style={{ fontSize: '12px', color: '#4a7c74', fontWeight: '600' }}>מע&quot;מ (₪)</span>
+                    <span style={{ fontSize: '12px', color: '#4a7c74', fontWeight: '600' }}>מע&quot;מ (₪) — חושב אוטומטית (18%)</span>
                     <input
                       style={editInputStyle}
                       type="number"
