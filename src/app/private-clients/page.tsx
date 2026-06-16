@@ -25,6 +25,7 @@ export default function PrivateClientsPage() {
     name: '', phone: '', address: '', price: '', frequency: 'שבועי', notes: '',
     visit_date: new Date().toISOString().split('T')[0],
   });
+  const [paidMsg, setPaidMsg] = useState('');
 
   const fetchClients = async () => {
     const { data } = await supabase
@@ -65,6 +66,20 @@ export default function PrivateClientsPage() {
     await supabase.from('private_clients').delete().eq('id', id);
     setSelected(null);
     fetchClients();
+  };
+
+  const handleRegisterPayment = async (client: Client) => {
+    setPaidMsg('');
+    const { error } = await supabase.from('transactions').insert([{
+      type: 'income',
+      amount: Number(client.price) || 0,
+      description: `לקוח פרטי: ${client.name}`,
+    }]);
+    if (error) {
+      setPaidMsg('שגיאה ברישום התשלום');
+      return;
+    }
+    setPaidMsg(`✅ נרשמה הכנסה של ₪${(Number(client.price) || 0).toLocaleString()} במאזן`);
   };
 
   const handleCall = (phone: string) => { window.location.href = `tel:${phone}`; };
@@ -147,6 +162,7 @@ export default function PrivateClientsPage() {
               <option>דו שבועי</option>
               <option>חודשי</option>
               <option>פעמיים בשבוע</option>
+              <option>חד פעמי</option>
             </select>
             <input style={inputStyle} placeholder="הערות" value={form.notes}
               onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
@@ -183,7 +199,7 @@ export default function PrivateClientsPage() {
           {clients.map(c => (
             <div
               key={c.id}
-              onClick={() => setSelected(c)}
+              onClick={() => { setSelected(c); setPaidMsg(''); }}
               style={{ ...cardStyle, cursor: 'pointer', transition: 'all 0.18s ease' }}
               onMouseEnter={e => {
                 const el = e.currentTarget as HTMLElement;
@@ -275,6 +291,25 @@ export default function PrivateClientsPage() {
                 </p>
               )}
             </div>
+
+            <button
+              onClick={() => handleRegisterPayment(selected)}
+              style={{
+                ...btnStyle('linear-gradient(135deg, #059669, #0d9488)'),
+                width: '100%', marginBottom: '10px',
+                boxShadow: '0 4px 14px rgba(5,150,105,0.3)',
+              }}
+            >
+              💵 רשום תשלום (₪{selected.price?.toLocaleString()})
+            </button>
+            {paidMsg && (
+              <p style={{
+                margin: '0 0 12px', textAlign: 'center', fontSize: '13px', fontWeight: '700',
+                color: paidMsg.startsWith('✅') ? '#059669' : '#f43f5e',
+              }}>
+                {paidMsg}
+              </p>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <button
