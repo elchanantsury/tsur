@@ -41,6 +41,18 @@ const BTN_BASE: React.CSSProperties = {
   border: 'none',
 };
 
+const editInputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 12px',
+  border: '1px solid #d1fae5',
+  borderRadius: '10px',
+  fontSize: '14px',
+  fontFamily: 'inherit',
+  background: '#fff',
+  color: '#0d2420',
+  boxSizing: 'border-box',
+};
+
 export default function ReceiptScannerPage() {
   const [receipts, setReceipts] = useState<ReceiptListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,22 +110,26 @@ export default function ReceiptScannerPage() {
       setImagePreview(preview);
 
       const { blob, base64, mediaType } = await compressImage(file);
-
-      const response = await fetch('/api/scan-receipt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64, mediaType }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        setScanError(data.error || 'שגיאה בזיהוי הקבלה');
-        setCompressedBlob(blob);
-        return;
-      }
-
       setCompressedBlob(blob);
-      setResult(data);
+
+      try {
+        const response = await fetch('/api/scan-receipt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: base64, mediaType }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          setScanError('הזיהוי האוטומטי נכשל — מלא/י את הפרטים ידנית ושמור/י');
+          setResult({ company_name: '', total_price: '', vat: '' });
+          return;
+        }
+        setResult(data);
+      } catch {
+        setScanError('הזיהוי האוטומטי נכשל — מלא/י את הפרטים ידנית ושמור/י');
+        setResult({ company_name: '', total_price: '', vat: '' });
+      }
     } catch {
       setScanError('שגיאה בעיבוד התמונה. נסה שוב.');
     } finally {
@@ -337,24 +353,47 @@ export default function ReceiptScannerPage() {
               </div>
             ) : result ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <p style={{ fontWeight: '700', color: '#0d2420', marginBottom: '4px' }}>תוצאות זיהוי:</p>
+                <p style={{ fontWeight: '700', color: '#0d2420', marginBottom: '4px' }}>פרטי הקבלה (ניתן לערוך):</p>
                 <div
                   style={{
                     background: '#f0fdf9',
                     border: '1px solid #d1fae5',
                     borderRadius: '12px',
                     padding: '14px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
                   }}
                 >
-                  <p style={{ fontSize: '13px', color: '#4a7c74', margin: '0 0 8px' }}>
-                    <strong>חברה:</strong> {result.company_name || '—'}
-                  </p>
-                  <p style={{ fontSize: '13px', color: '#4a7c74', margin: '0 0 8px' }}>
-                    <strong>סכום כולל:</strong> ₪{result.total_price || '—'}
-                  </p>
-                  <p style={{ fontSize: '13px', color: '#4a7c74', margin: 0 }}>
-                    <strong>מע&quot;מ:</strong> ₪{result.vat || '—'}
-                  </p>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontSize: '12px', color: '#4a7c74', fontWeight: '600' }}>שם החברה</span>
+                    <input
+                      style={editInputStyle}
+                      placeholder="שם החברה"
+                      value={result.company_name}
+                      onChange={e => setResult(r => r ? { ...r, company_name: e.target.value } : r)}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontSize: '12px', color: '#4a7c74', fontWeight: '600' }}>סכום כולל (₪)</span>
+                    <input
+                      style={editInputStyle}
+                      type="number"
+                      placeholder="0"
+                      value={result.total_price}
+                      onChange={e => setResult(r => r ? { ...r, total_price: e.target.value } : r)}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontSize: '12px', color: '#4a7c74', fontWeight: '600' }}>מע&quot;מ (₪)</span>
+                    <input
+                      style={editInputStyle}
+                      type="number"
+                      placeholder="0"
+                      value={result.vat}
+                      onChange={e => setResult(r => r ? { ...r, vat: e.target.value } : r)}
+                    />
+                  </label>
                 </div>
                 <button
                   type="button"
