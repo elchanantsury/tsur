@@ -3,33 +3,54 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BRANCHES_DATA } from '../constants/branches';
 import { useReports } from '../context/ReportsContext';
-import { supabase } from '../lib/supabase';
-import { Building2, CheckCircle2, CircleDot, Users, TrendingUp, Plus, X, ChevronLeft } from 'lucide-react';
+import { Building2, CheckCircle2, CircleDot, Users, Clock, Plus, X, ChevronLeft } from 'lucide-react';
+
+type Zmanim = Record<string, string>;
+
+const ZMANIM_ROWS: { key: string; label: string }[] = [
+  { key: 'alotHaShachar', label: 'עלות השחר' },
+  { key: 'sunrise', label: 'נץ החמה' },
+  { key: 'sofZmanShma', label: 'סוף זמן ק"ש' },
+  { key: 'sofZmanTfilla', label: 'סוף זמן תפילה' },
+  { key: 'chatzot', label: 'חצות היום' },
+  { key: 'minchaGedola', label: 'מנחה גדולה' },
+  { key: 'plagHaMincha', label: 'פלג המנחה' },
+  { key: 'sunset', label: 'שקיעה' },
+  { key: 'tzeit7083deg', label: 'צאת הכוכבים' },
+];
 
 export default function Dashboard() {
   const { reports } = useReports();
-  const [todayIncome, setTodayIncome] = useState(0);
   const [briefs, setBriefs] = useState<{ id: string; text: string; done: boolean }[]>([]);
   const [newBrief, setNewBrief] = useState('');
   const [showBriefInput, setShowBriefInput] = useState(false);
-  const today = new Date().toLocaleDateString('he-IL');
+  const [zmanim, setZmanim] = useState<Zmanim | null>(null);
 
   const totalBranches = BRANCHES_DATA.length;
   const closedBranchNames = [...new Set(reports.map((r: any) => r.branch))];
   const closedCount = closedBranchNames.length;
   const remainingCount = totalBranches - closedCount;
 
+  const hebrewDate = new Date().toLocaleDateString('he-IL-u-ca-hebrew', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  });
+  const fmtTime = (iso?: string) =>
+    iso ? new Date(iso).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+
   useEffect(() => {
-    fetchTodayIncome();
     loadBriefs();
+    fetchZmanim();
   }, []);
 
-  const fetchTodayIncome = async () => {
-    const { data } = await supabase
-      .from('reports')
-      .select('total_price, date')
-      .eq('date', today);
-    if (data) setTodayIncome(data.reduce((s, r) => s + Number(r.total_price || 0), 0));
+  const fetchZmanim = async () => {
+    try {
+      const d = new Date().toLocaleDateString('en-CA');
+      const res = await fetch(`https://www.hebcal.com/zmanim?cfg=json&geonameid=281184&date=${d}`);
+      const data = await res.json();
+      if (data?.times) setZmanim(data.times);
+    } catch {
+      /* אם אין רשת — פשוט לא נציג זמנים */
+    }
   };
 
   const loadBriefs = () => {
@@ -69,8 +90,8 @@ export default function Dashboard() {
       icon: <CircleDot size={20} />, bg: '#f0fdf9', border: '#5eead4', color: '#0f766e', href: '/april-branches',
     },
     {
-      label: 'הכנסה היום', value: `₪${todayIncome.toLocaleString()}`, sub: today,
-      icon: <TrendingUp size={20} />, bg: '#fefce8', border: '#fde68a', color: '#b45309', href: '/finance',
+      label: 'ניהול פיננסים', value: '', sub: 'הכנסות והוצאות',
+      icon: <Building2 size={20} />, bg: '#fefce8', border: '#fde68a', color: '#b45309', href: '/finance',
     },
     {
       label: 'לקוחות פרטיים', value: '', sub: 'ניהול לקוחות',
@@ -135,6 +156,46 @@ export default function Dashboard() {
             </div>
           </Link>
         ))}
+      </div>
+
+      {/* זמני היום */}
+      <div style={{
+        background: '#fff', border: '1px solid #d1fae5', borderRadius: '18px',
+        padding: '20px', marginBottom: '20px',
+        boxShadow: '0 2px 12px rgba(16,185,129,0.06)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{
+              width: '34px', height: '34px', borderRadius: '10px', background: '#eff6ff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1d4ed8',
+            }}>
+              <Clock size={18} />
+            </span>
+            <div>
+              <p style={{ margin: 0, fontWeight: '800', color: '#0d2420', fontSize: '16px' }}>זמני היום</p>
+              <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#94c9bf' }}>{hebrewDate} · ירושלים</p>
+            </div>
+          </div>
+        </div>
+
+        {!zmanim ? (
+          <p style={{ color: '#94c9bf', fontSize: '13px', textAlign: 'center', padding: '12px 0' }}>טוען זמנים...</p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px' }}>
+            {ZMANIM_ROWS.map(row => (
+              <div key={row.key} style={{
+                background: '#f0fdf9', border: '1px solid #d1fae5', borderRadius: '10px',
+                padding: '10px 12px', textAlign: 'center',
+              }}>
+                <p style={{ margin: 0, fontSize: '11px', color: '#6aada0', fontWeight: '600' }}>{row.label}</p>
+                <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: '800', color: '#0d2420', direction: 'ltr' }}>
+                  {fmtTime(zmanim[row.key])}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* בריף היום */}

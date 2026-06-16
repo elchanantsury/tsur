@@ -28,11 +28,15 @@ export default function FinancePage() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  const today = new Date().toLocaleDateString('he-IL');
   const branchIncome = reports.reduce((sum, r) => sum + Number(r.total_price || 0), 0);
   const manualIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
   const totalExpense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
   const totalIncome = branchIncome + manualIncome;
   const balance = totalIncome - totalExpense;
+  const todayIncome = reports
+    .filter(r => r.date === today)
+    .reduce((sum, r) => sum + Number(r.total_price || 0), 0);
 
   const handleAdd = async () => {
     if (!amount || !description) return;
@@ -62,6 +66,12 @@ export default function FinancePage() {
         WebkitBackgroundClip: 'text',
         WebkitTextFillColor: 'transparent',
       }}>ניהול פיננסי</h1>
+
+      <div style={{ ...card('#fffbeb', '#fde68a'), marginBottom: '16px' }}>
+        <p style={{ fontSize: '12px', color: '#b45309', fontWeight: '600', marginBottom: '8px' }}>📅 הכנסת היום</p>
+        <p style={{ fontSize: 'clamp(26px, 7vw, 36px)', fontWeight: '800', color: '#0d2420', margin: 0 }}>₪{todayIncome.toLocaleString()}</p>
+        <p style={{ fontSize: '11px', color: '#94c9bf', marginTop: '6px' }}>{today}</p>
+      </div>
 
       <div className="finance-stats" style={{ marginBottom: '24px' }}>
         <div style={card('#f0fdf9', '#a7f3d0')}>
