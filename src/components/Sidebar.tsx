@@ -44,7 +44,7 @@ export default function Sidebar() {
       <nav style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
         <Link href="/" style={linkStyle('/')}><span>📊</span> לוח בקרה</Link>
         <Link href="/april-branches" style={linkStyle('/april-branches')}><span>🏢</span> סניפי אפריל</Link>
-        <Linkle={linkStyle('/work-log')}><span>📅</span> יומן עבודה</Link>
+        <Link href="/work-log" style={linkStyle('/work-log')}><span>📅</span> יומן עבודה</Link>
         <Link href="/reports" style={linkStyle('/reports', '#10b981')}><span>✅</span> סניפים שנסגרו</Link>
         {isAdmin && (
           <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #d1fae5' }}>
@@ -54,7 +54,13 @@ export default function Sidebar() {
             <Link href="/finance" style={linkStyle('/finance', '#f59e0b')}><span>💰</span> ניהול פיננסים</Link>
             <Link href="/private-clients" style={linkStyle('/private-clients', '#f59e0b')}><span>👤</span> לקוחות פרטיים</Link>
             <Link href="/receipt-scanner" style={linkStyle('/receipt-scanner', '#f59e0b')}><span>🧾</span> סורק קבלות</Link>
-            <Link href="/admin/users" style={linkStyle('/admin/users', '#f59e0b')}><span>⚙️</span> ניהול משתמשים</L', borderRadius: '12px',
+            <Link href="/admin/users" style={linkStyle('/admin/users', '#f59e0b')}><span>⚙️</span> ניהול משתמשים</Link>
+          </div>
+        )}
+      </nav>
+
+      <div style={{
+        padding: '14px', borderRadius: '12px',
         background: '#f0fdf9', border: '1px solid #d1fae5',
         textAlign: 'center', marginTop: '16px',
       }}>
