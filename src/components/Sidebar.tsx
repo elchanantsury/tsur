@@ -4,7 +4,14 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useReports } from '../context/ReportsContext';
 import { supabase } from '../lib/supabase';
 
-export default function Sidebar() {
+type SidebarProps = {
+  isOpen?: boolean;
+  isMobile?: boolean;
+  onClose?: () => void;
+  onNavigate?: () => void;
+};
+
+export default function Sidebar({ onNavigate }: SidebarProps = {}) {
   const { user } = useReports();
   const pathname = usePathname();
   const router = useRouter();
@@ -42,19 +49,19 @@ export default function Sidebar() {
         }} />
       </div>
       <nav style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-        <Link href="/" style={linkStyle('/')}><span>📊</span> לוח בקרה</Link>
-        <Link href="/april-branches" style={linkStyle('/april-branches')}><span>🏢</span> סניפי אפריל</Link>
-        <Link href="/work-log" style={linkStyle('/work-log')}><span>📅</span> יומן עבודה</Link>
-        <Link href="/reports" style={linkStyle('/reports', '#10b981')}><span>✅</span> סניפים שנסגרו</Link>
+        <Link href="/" onClick={onNavigate} style={linkStyle('/')}><span>📊</span> לוח בקרה</Link>
+        <Link href="/april-branches" onClick={onNavigate} style={linkStyle('/april-branches')}><span>🏢</span> סניפי אפריל</Link>
+        <Link href="/work-log" onClick={onNavigate} style={linkStyle('/work-log')}><span>📅</span> יומן עבודה</Link>
+        <Link href="/reports" onClick={onNavigate} style={linkStyle('/reports', '#10b981')}><span>✅</span> סניפים שנסגרו</Link>
         {isAdmin && (
           <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #d1fae5' }}>
             <p style={{ color: '#94c9bf', fontSize: '11px', fontWeight: '700', marginBottom: '8px', paddingRight: '4px' }}>
               אזור מנהל
             </p>
-            <Link href="/finance" style={linkStyle('/finance', '#f59e0b')}><span>💰</span> ניהול פיננסים</Link>
-            <Link href="/private-clients" style={linkStyle('/private-clients', '#f59e0b')}><span>👤</span> לקוחות פרטיים</Link>
-            <Link href="/receipt-scanner" style={linkStyle('/receipt-scanner', '#f59e0b')}><span>🧾</span> סורק קבלות</Link>
-            <Link href="/admin/users" style={linkStyle('/admin/users', '#f59e0b')}><span>⚙️</span> ניהול משתמשים</Link>
+            <Link href="/finance" onClick={onNavigate} style={linkStyle('/finance', '#f59e0b')}><span>💰</span> ניהול פיננסים</Link>
+            <Link href="/private-clients" onClick={onNavigate} style={linkStyle('/private-clients', '#f59e0b')}><span>👤</span> לקוחות פרטיים</Link>
+            <Link href="/receipt-scanner" onClick={onNavigate} style={linkStyle('/receipt-scanner', '#f59e0b')}><span>🧾</span> סורק קבלות</Link>
+            <Link href="/admin/users" onClick={onNavigate} style={linkStyle('/admin/users', '#f59e0b')}><span>⚙️</span> ניהול משתמשים</Link>
           </div>
         )}
       </nav>
